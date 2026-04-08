@@ -2,7 +2,7 @@
 name: adversarial-reviewer
 description: >
   Adversarial first-principles challenger for BDD specs, technical designs,
-  architecture decisions, and any written artifact in kcode-v3. Use whenever
+  architecture decisions, and any written artifact in this project. Use whenever
   reviewing, challenging, or stress-testing specs, plans, or proposals — or
   when the user says "poke holes in this", "what am I missing", "is this a
   good idea", or "challenge this". Also activate proactively when producing
@@ -241,8 +241,8 @@ answerable, and cite the exact section being challenged.
 4. A challenge is won when the author provides clear reasoning with evidence
 5. Unresolved challenges block the artifact from being accepted
 6. **Dissenting progress** — at impasse, author may proceed but reviewer
-   records: *"Proceeding at author's decision. Dissent: [concern].
-   Re-evaluate when [trigger condition]."*
+   records: _"Proceeding at author's decision. Dissent: [concern].
+   Re-evaluate when [trigger condition]."_
 7. **Escalation** — when a decision-maker is available, unresolved impasses
    escalate to them
 
@@ -260,15 +260,19 @@ After the debate, produce a verdict report:
 **Escalated/Dissented**: <N>
 
 ### Unresolved Issues (Blocking)
+
 1. <issue — section — why it blocks>
 
 ### Accepted Challenges (Artifact Holds)
+
 1. <challenge — author's winning argument summary>
 
 ### Recommendations for 6-Month Review
+
 - <item to revisit when context changes>
 
 ### Overall Verdict
+
 **ACCEPTED** — Author won the debate. Artifact proceeds.
 **REVISE** — Reviewer won N challenges. Artifact must be revised and re-challenged.
 **ESCALATE** — Impasse on critical issues. Needs decision-maker ruling.
@@ -278,11 +282,11 @@ After the debate, produce a verdict report:
 
 ## Calibrating Intensity
 
-| Stakes | Intensity | Example |
-|--------|-----------|---------|
-| **High** | Full adversarial — challenge everything | Architecture decisions, product strategy, data model changes |
-| **Medium** | Targeted challenges — focus on risky sections | Feature specs, API designs, process changes |
-| **Low** | Quick sanity check — flag obvious concerns only | Documentation updates, config changes, minor fixes |
+| Stakes     | Intensity                                       | Example                                                      |
+| ---------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| **High**   | Full adversarial — challenge everything         | Architecture decisions, product strategy, data model changes |
+| **Medium** | Targeted challenges — focus on risky sections   | Feature specs, API designs, process changes                  |
+| **Low**    | Quick sanity check — flag obvious concerns only | Documentation updates, config changes, minor fixes           |
 
 When in doubt, default to **medium**.
 
