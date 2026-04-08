@@ -1,7 +1,7 @@
 //! mempalace CLI - Entry point
 
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use mempalace::config::Config;
 use mempalace::error::Result;
@@ -156,6 +156,56 @@ fn cmd_init(dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
+/// Derive a wing name from a directory path.
+/// Uses the directory's file name (basename), prefixed with "wing_".
+/// Falls back to "wing_general" when no name can be determined.
+pub fn wing_name_from_dir(dir: &Path) -> String {
+    fn slugify(s: &str) -> String {
+        s.to_lowercase()
+            .chars()
+            .map(|c| {
+                if c.is_alphanumeric() || c == '-' || c == '_' {
+                    c
+                } else if c.is_whitespace() {
+                    '-'
+                } else {
+                    '-'
+                }
+            })
+            .collect::<String>()
+            .split('-')
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join("-")
+    }
+
+    fn to_wing_name(path: &Path) -> Option<String> {
+        path.file_name().map(|s| {
+            let slug = slugify(&s.to_string_lossy());
+            if slug.is_empty() {
+                "general".to_string()
+            } else {
+                format!("wing_{}", slug)
+            }
+        })
+    }
+
+    // First try directly
+    if let Some(name) = to_wing_name(dir) {
+        return name;
+    }
+
+    // For paths with no basename (e.g., ".", "..", empty string),
+    // canonicalize to resolve to the actual directory path and retry.
+    if let Ok(canonical) = std::fs::canonicalize(dir) {
+        if let Some(name) = to_wing_name(&canonical) {
+            return name;
+        }
+    }
+
+    "wing_general".to_string()
+}
+
 /// Mine files or conversations
 fn cmd_mine(dir: &PathBuf, mode: &str, agent: &str) -> Result<()> {
     use mempalace::miner::{ConvoMiner, FileMiner};
@@ -172,10 +222,7 @@ fn cmd_mine(dir: &PathBuf, mode: &str, agent: &str) -> Result<()> {
     println!("  Palace: {:?}", config.palace_path);
     println!("  Collection: {}", config.collection_name);
 
-    let wing_name = dir
-        .file_name()
-        .map(|s| format!("wing_{}", s.to_string_lossy()))
-        .unwrap_or_else(|| "wing_general".to_string());
+    let wing_name = wing_name_from_dir(dir);
 
     println!("  Mining to wing: {}", wing_name);
 
@@ -531,3 +578,7 @@ const PALACE_PROTOCOL: &str = r#"IMPORTANT — MemPalace Memory Protocol:
 5. WHEN FACTS CHANGE: call mempalace_kg_invalidate on the old fact, mempalace_kg_add for the new one.
 
 This protocol ensures the AI KNOWS before it speaks. Storage is not memory — but storage + this protocol = memory."#;
+
+#[cfg(test)]
+#[path = "./tests/wing_name.rs"]
+mod wing_name;
