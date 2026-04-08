@@ -3,12 +3,14 @@
 //! Ported from Python to Rust. Stores semantic memories in ChromaDB and
 //! temporal knowledge graphs in SQLite.
 
+pub mod commands;
 pub mod config;
 pub mod dialect;
 pub mod error;
 pub mod extract;
 pub mod graph;
 pub mod layers;
+pub mod logger;
 pub mod mcp;
 pub mod miner;
 pub mod normalize;
