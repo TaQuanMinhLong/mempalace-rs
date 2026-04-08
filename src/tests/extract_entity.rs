@@ -82,12 +82,28 @@ fn test_cross_file_entity_aggregation() {
     let file1 = tempfile::NamedTempFile::with_suffix(".txt").unwrap();
     let file2 = tempfile::NamedTempFile::with_suffix(".txt").unwrap();
 
-    std::fs::write(file1.path(), "Alice said hello. Alice laughed. Alice thinks.").unwrap();
-    std::fs::write(file2.path(), "Alice is here. She works on Rust. Alice was happy.").unwrap();
+    std::fs::write(
+        file1.path(),
+        "Alice said hello. Alice laughed. Alice thinks.",
+    )
+    .unwrap();
+    std::fs::write(
+        file2.path(),
+        "Alice is here. She works on Rust. Alice was happy.",
+    )
+    .unwrap();
 
-    let result = extractor.detect_from_files(&[file1.path().as_ref(), file2.path().as_ref()], 10);
+    let result = extractor.detect_from_files(&[file1.path(), file2.path()], 10);
 
     let alice = result.all().into_iter().find(|e| e.name == "Alice");
-    assert!(alice.is_some(), "Alice should be detected (frequency 5 across files): got {:?}", result.all());
-    assert_eq!(alice.unwrap().frequency, 5, "Alice frequency should be 5 across both files");
+    assert!(
+        alice.is_some(),
+        "Alice should be detected (frequency 5 across files): got {:?}",
+        result.all()
+    );
+    assert_eq!(
+        alice.unwrap().frequency,
+        5,
+        "Alice frequency should be 5 across both files"
+    );
 }

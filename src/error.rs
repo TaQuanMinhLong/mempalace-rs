@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, MempalaceError>;
+pub type Result<T, E = MempalaceError> = std::result::Result<T, E>;
 
 #[derive(Error, Debug)]
 pub enum MempalaceError {

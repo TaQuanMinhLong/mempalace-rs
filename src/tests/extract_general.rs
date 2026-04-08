@@ -92,7 +92,7 @@ fn test_split_by_turns() {
     ];
 
     let segments = extractor.split_by_turns(lines.as_slice(), &turn_patterns);
-    assert!(segments.len() >= 1);
+    assert!(!segments.is_empty());
 }
 
 #[test]

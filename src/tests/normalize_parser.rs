@@ -18,7 +18,7 @@ fn test_normalize_plain_text() {
     let parser = ChatParser::new();
     let content = "> Hello\nHi there\n\n> How are you?\nI'm good";
     let exchanges = parser.normalize(content, ChatFormat::PlainText).unwrap();
-    assert!(exchanges.len() >= 1);
+    assert!(!exchanges.is_empty());
 }
 
 #[test]
@@ -56,7 +56,8 @@ fn test_extract_content_string() {
 #[test]
 fn test_extract_content_array() {
     let parser = ChatParser::new();
-    let content = serde_json::json!([{"type": "text", "text": "Hello"}, {"type": "text", "text": "World"}]);
+    let content =
+        serde_json::json!([{"type": "text", "text": "Hello"}, {"type": "text", "text": "World"}]);
     assert_eq!(parser.extract_content(content), "Hello World");
 }
 

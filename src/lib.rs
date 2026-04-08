@@ -18,3 +18,11 @@ pub mod search;
 pub mod storage;
 
 pub use error::{MempalaceError, Result};
+
+#[cfg(test)]
+#[path = "./tests/mcp_tools.rs"]
+mod mcp_tools;
+
+#[cfg(test)]
+#[path = "./tests/mcp_tool_handlers.rs"]
+mod mcp_tool_handlers;

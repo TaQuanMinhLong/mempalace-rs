@@ -28,6 +28,8 @@ fn test_retrieve_layer_l3_returns_empty() {
     let stack = MemoryStack::new(None, None);
     let retriever = Retriever::new();
 
-    let context = retriever.retrieve_layer(&stack, &storage, MemoryLayer::L3).unwrap();
+    let context = retriever
+        .retrieve_layer(&stack, &storage, MemoryLayer::L3)
+        .unwrap();
     assert!(context.is_empty());
 }

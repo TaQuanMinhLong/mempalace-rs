@@ -21,7 +21,10 @@ fn test_is_true_session_start() {
     let lines = vec!["Claude Code v1.0".to_string(), "Ctrl+E to show".to_string()];
     assert!(!is_true_session_start(&lines, 0));
 
-    let lines2 = vec!["Claude Code v1.0".to_string(), "session content".to_string()];
+    let lines2 = vec![
+        "Claude Code v1.0".to_string(),
+        "session content".to_string(),
+    ];
     assert!(is_true_session_start(&lines2, 0));
 }
 

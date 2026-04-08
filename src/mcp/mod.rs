@@ -1,5 +1,6 @@
 //! MCP server - Model Context Protocol server
 
 pub mod server;
+pub(crate) mod tools;
 
-pub use server::McpServer;
+pub use server::{serve, McpServer};

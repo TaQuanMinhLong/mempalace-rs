@@ -12,8 +12,8 @@
 use crate::error::{MempalaceError, Result};
 use crate::layers::SearchHit;
 use crate::storage::ChromaStorage;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// Search result with similarity score
 #[derive(Debug, Clone)]
@@ -23,12 +23,12 @@ pub struct SearchResult {
 
 /// Semantic searcher for the memory palace
 pub struct SemanticSearcher {
-    storage: Rc<RefCell<ChromaStorage>>,
+    storage: Arc<Mutex<ChromaStorage>>,
 }
 
 impl SemanticSearcher {
     /// Create a new semantic searcher
-    pub fn new(storage: Rc<RefCell<ChromaStorage>>) -> Self {
+    pub fn new(storage: Arc<Mutex<ChromaStorage>>) -> Self {
         Self { storage }
     }
 
@@ -36,7 +36,7 @@ impl SemanticSearcher {
     ///
     /// Optionally filter by wing (project) and/or room (aspect).
     /// Returns results sorted by similarity score (descending).
-    pub fn search(
+    pub async fn search(
         &self,
         query: &str,
         wing: Option<&str>,
@@ -49,24 +49,25 @@ impl SemanticSearcher {
 
         let limit = if limit == 0 { 5 } else { limit };
 
-        // Delegate to storage layer which will query ChromaDB
-        let hits = self.storage.borrow().search(query, wing, room, limit);
+        let hits = {
+            let storage = self.storage.lock().await;
+            storage.search(query, wing, room, limit)
+        };
 
-        // Convert to SearchResult
         let results = hits.into_iter().map(|hit| SearchResult { hit }).collect();
 
         Ok(results)
     }
 
     /// Search and return results as a structured response
-    pub fn search_with_context(
+    pub async fn search_with_context(
         &self,
         query: &str,
         wing: Option<&str>,
         room: Option<&str>,
         limit: usize,
     ) -> Result<SearchResponse> {
-        let results = self.search(query, wing, room, limit)?;
+        let results = self.search(query, wing, room, limit).await?;
 
         Ok(SearchResponse {
             query: query.to_string(),

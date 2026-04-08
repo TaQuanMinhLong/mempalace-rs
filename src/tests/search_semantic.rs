@@ -1,5 +1,7 @@
 use super::*;
+use std::sync::Arc;
 use tempfile::tempdir;
+use tokio::sync::Mutex;
 
 #[test]
 fn test_search_result_creation() {
@@ -17,23 +19,25 @@ fn test_search_result_creation() {
     assert_eq!(result.hit.text, "Test document content");
 }
 
-#[test]
-fn test_search_empty_query() {
+#[tokio::test]
+async fn test_search_empty_query() {
     let dir = tempdir().unwrap();
     let storage = ChromaStorage::new(dir.path(), "test_collection").unwrap();
-    let searcher = SemanticSearcher::new(Rc::new(RefCell::new(storage)));
+    let searcher = SemanticSearcher::new(Arc::new(Mutex::new(storage)));
 
-    let result = searcher.search("", None, None, 5);
+    let result = searcher.search("", None, None, 5).await;
     assert!(result.is_err());
 }
 
-#[test]
-fn test_search_with_filters() {
+#[tokio::test]
+async fn test_search_with_filters() {
     let dir = tempdir().unwrap();
     let storage = ChromaStorage::new(dir.path(), "test_collection").unwrap();
-    let searcher = SemanticSearcher::new(Rc::new(RefCell::new(storage)));
+    let searcher = SemanticSearcher::new(Arc::new(Mutex::new(storage)));
 
-    let results = searcher.search("test query", Some("wing_code"), Some("auth"), 5);
+    let results = searcher
+        .search("test query", Some("wing_code"), Some("auth"), 5)
+        .await;
     assert!(results.is_ok());
-    assert!(results.unwrap().is_empty());
+    assert!(results.expect("search should succeed").is_empty());
 }

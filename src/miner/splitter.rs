@@ -270,7 +270,16 @@ impl MegaFileSplitter {
 
         let out_dir = output_dir
             .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| filepath.parent().unwrap().to_path_buf());
+            .or_else(|| filepath.parent().map(|parent| parent.to_path_buf()))
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!(
+                        "cannot determine output directory for {}",
+                        filepath.display()
+                    ),
+                )
+            })?;
         let mut written = Vec::new();
 
         for i in 0..all_boundaries.len() - 1 {

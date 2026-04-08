@@ -36,7 +36,10 @@ fn test_detect_from_content() {
     ));
 
     let content = "The button component needs to be updated";
-    assert_eq!(detector.detect_from_content(content), Some("frontend".to_string()));
+    assert_eq!(
+        detector.detect_from_content(content),
+        Some("frontend".to_string())
+    );
 }
 
 #[test]
@@ -89,11 +92,26 @@ fn test_should_skip_dir() {
 
 #[test]
 fn test_get_room_from_folder() {
-    assert_eq!(RoomDetector::get_room_from_folder("frontend"), Some("frontend".to_string()));
-    assert_eq!(RoomDetector::get_room_from_folder("front_end"), Some("frontend".to_string()));
-    assert_eq!(RoomDetector::get_room_from_folder("back-end"), Some("backend".to_string()));
-    assert_eq!(RoomDetector::get_room_from_folder("docs"), Some("documentation".to_string()));
-    assert_eq!(RoomDetector::get_room_from_folder("designs"), Some("design".to_string()));
+    assert_eq!(
+        RoomDetector::get_room_from_folder("frontend"),
+        Some("frontend".to_string())
+    );
+    assert_eq!(
+        RoomDetector::get_room_from_folder("front_end"),
+        Some("frontend".to_string())
+    );
+    assert_eq!(
+        RoomDetector::get_room_from_folder("back-end"),
+        Some("backend".to_string())
+    );
+    assert_eq!(
+        RoomDetector::get_room_from_folder("docs"),
+        Some("documentation".to_string())
+    );
+    assert_eq!(
+        RoomDetector::get_room_from_folder("designs"),
+        Some("design".to_string())
+    );
     assert_eq!(RoomDetector::get_room_from_folder("unknown_folder"), None);
 }
 

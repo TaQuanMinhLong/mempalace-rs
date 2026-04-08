@@ -2,9 +2,10 @@
 
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
+use tracing_appender::non_blocking::WorkerGuard;
 
 use mempalace::config::Config;
-use mempalace::error::Result;
+use mempalace::error::{MempalaceError, Result};
 
 /// mempalace - A local-first memory palace system
 #[derive(Parser, Debug)]
@@ -17,6 +18,25 @@ use mempalace::error::Result;
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+}
+
+fn init_logging() -> Result<WorkerGuard> {
+    let log_dir = Config::default_config_dir().join("logs");
+    std::fs::create_dir_all(&log_dir)?;
+
+    let file_appender = tracing_appender::rolling::daily(log_dir, "mempalace.log");
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_ansi(false)
+        .with_writer(non_blocking)
+        .try_init()
+        .map_err(|error| {
+            MempalaceError::Config(format!("failed to initialize logging: {error}"))
+        })?;
+
+    Ok(guard)
 }
 
 #[derive(Subcommand, Debug)]
@@ -80,8 +100,7 @@ pub enum Commands {
 }
 
 fn main() -> Result<()> {
-    // Initialize logging
-    tracing_subscriber::fmt::init();
+    let _log_guard = init_logging()?;
 
     let cli = Cli::parse();
 
@@ -163,11 +182,9 @@ pub fn wing_name_from_dir(dir: &Path) -> String {
     fn slugify(s: &str) -> String {
         s.to_lowercase()
             .chars()
-            .map(|c| {
+            .map(|c: char| {
                 if c.is_alphanumeric() || c == '-' || c == '_' {
                     c
-                } else if c.is_whitespace() {
-                    '-'
                 } else {
                     '-'
                 }
@@ -283,7 +300,7 @@ fn cmd_search(query: &str, wing: Option<&str>, room: Option<&str>, limit: usize)
 
     let config = Config::load()?;
     let storage = ChromaStorage::new(&config.palace_path, &config.collection_name)?;
-    let searcher = SemanticSearcher::new(std::rc::Rc::new(std::cell::RefCell::new(storage)));
+    let searcher = SemanticSearcher::new(std::sync::Arc::new(tokio::sync::Mutex::new(storage)));
 
     match searcher.search(query, wing, room, limit) {
         Ok(results) => {
@@ -559,14 +576,15 @@ fn cmd_split(dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-/// Start MCP server (JSON-RPC over stdio)
+/// Start MCP server (using official rmcp SDK)
 fn cmd_serve() -> Result<()> {
-    use mempalace::mcp::McpServer;
-
-    println!("Starting MemPalace MCP Server...");
-    let server = McpServer::new()?;
-    server.start()?;
-
+    tracing::info!("starting mcp stdio server");
+    let rt = tokio::runtime::Runtime::new()?;
+    if let Err(error) = rt.block_on(mempalace::mcp::serve()) {
+        tracing::error!("mcp stdio server exited with error: {}", error);
+        return Err(error);
+    }
+    tracing::info!("mcp stdio server shut down cleanly");
     Ok(())
 }
 

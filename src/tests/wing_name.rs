@@ -1,4 +1,6 @@
-use super::*;
+use std::path::PathBuf;
+
+use crate::commands::wing_name_from_dir;
 
 #[test]
 fn test_wing_name_from_dir_simple() {

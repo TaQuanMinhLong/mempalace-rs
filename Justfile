@@ -22,11 +22,11 @@ test-verbose:
 
 # Run clippy lints
 lint:
-    cargo clippy --all-targets -- -D warnings
+    cargo clippy --all-targets --all-features -- -D warnings
 
 # Format code
 fmt:
-    cargo fmt
+    cargo fmt --all
 
 # Clean build artifacts
 clean:

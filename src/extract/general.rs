@@ -278,7 +278,8 @@ impl GeneralExtractor {
                 .map(|(t, _)| *t);
 
             if let Some(max_type) = max_type {
-                let max_score = *scores.get(&max_type).unwrap() as f64 + length_bonus as f64;
+                let max_score =
+                    scores.get(&max_type).copied().unwrap_or(0) as f64 + length_bonus as f64;
 
                 // Disambiguate
                 let final_type = self.disambiguate(&max_type, &prose, &scores);

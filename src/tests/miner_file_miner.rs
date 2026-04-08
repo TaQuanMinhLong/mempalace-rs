@@ -28,7 +28,7 @@ fn test_chunk_file_empty() {
 fn test_chunk_file_preserves_words() {
     let content = "Hello world. This is a test of chunking that should work properly with enough content to exceed the minimum chunk size requirement for proper word preservation. Another sentence here with even more content to ensure we pass the minimum chunk size.";
     let chunks = FileMiner::chunk_file(content, 50);
-    assert!(chunks.len() >= 1);
+    assert!(!chunks.is_empty());
 }
 
 #[test]
@@ -51,7 +51,8 @@ fn test_chunk_file_utf8_char_boundary() {
 
 #[test]
 fn test_chunk_file_utf8_box_drawing() {
-    let content = "┌─────────────────────┐\n│ Test Content Here │\n└─────────────────────┘\n".repeat(20);
+    let content =
+        "┌─────────────────────┐\n│ Test Content Here │\n└─────────────────────┘\n".repeat(20);
     let chunks = FileMiner::chunk_file(&content, 200);
     assert!(!chunks.is_empty());
     for chunk in &chunks {

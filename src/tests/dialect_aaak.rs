@@ -52,9 +52,21 @@ fn test_basic_compression() {
     let text = "We decided to use GraphQL instead of REST because it provides better type safety. Alice was excited about the API change.";
     let result = dialect.compress(text).unwrap();
 
-    assert!(result.contains("DECISION"), "Should contain DECISION flag: {}", result);
-    assert!(result.contains("determ"), "Should contain determ emotion: {}", result);
-    assert!(result.contains("excite"), "Should contain excite emotion: {}", result);
+    assert!(
+        result.contains("DECISION"),
+        "Should contain DECISION flag: {}",
+        result
+    );
+    assert!(
+        result.contains("determ"),
+        "Should contain determ emotion: {}",
+        result
+    );
+    assert!(
+        result.contains("excite"),
+        "Should contain excite emotion: {}",
+        result
+    );
     assert!(
         result.contains("graphql") || result.contains("rest") || result.contains("api"),
         "Should contain technical topics: {}",
@@ -69,10 +81,18 @@ fn test_compression_with_entities() {
     dialect.add_entity("Bob", "BOB");
 
     let text = "Alice and Bob were discussing the project. Alice was happy about the progress.";
-    let result = dialect.compress(&text).unwrap();
+    let result = dialect.compress(text).unwrap();
 
-    assert!(result.contains("ALI"), "Should contain ALI entity: {}", result);
-    assert!(result.contains("BOB"), "Should contain BOB entity: {}", result);
+    assert!(
+        result.contains("ALI"),
+        "Should contain ALI entity: {}",
+        result
+    );
+    assert!(
+        result.contains("BOB"),
+        "Should contain BOB entity: {}",
+        result
+    );
 }
 
 #[test]
@@ -84,7 +104,11 @@ fn test_entity_skip() {
     let text = "Alice and Gandalf walked into the forest.";
     let entities = dialect.detect_entities_in_text(text);
 
-    assert!(entities.contains(&"ALI".to_string()), "Should find Alice: {:?}", entities);
+    assert!(
+        entities.contains(&"ALI".to_string()),
+        "Should find Alice: {:?}",
+        entities
+    );
 }
 
 #[test]
@@ -96,7 +120,10 @@ fn test_compression_stats() {
 
     let stats = dialect.compression_stats(original, compressed);
 
-    assert!(stats["original_tokens_est"].as_u64().unwrap() > stats["summary_tokens_est"].as_u64().unwrap());
+    assert!(
+        stats["original_tokens_est"].as_u64().unwrap()
+            > stats["summary_tokens_est"].as_u64().unwrap()
+    );
     assert!(stats["original_chars"].as_u64().unwrap() > stats["summary_chars"].as_u64().unwrap());
 }
 
@@ -137,9 +164,17 @@ fn test_encode_zettel() {
 
     let result = dialect.encode_zettel(&zettel).unwrap();
 
-    assert!(result.contains("001"), "Should contain zettel id: {}", result);
+    assert!(
+        result.contains("001"),
+        "Should contain zettel id: {}",
+        result
+    );
     assert!(result.contains("ALI"), "Should contain entity: {}", result);
-    assert!(result.contains("testing"), "Should contain topic: {}", result);
+    assert!(
+        result.contains("testing"),
+        "Should contain topic: {}",
+        result
+    );
     assert!(result.contains("0.75"), "Should contain weight: {}", result);
     assert!(result.contains("joy"), "Should contain emotion: {}", result);
 }
@@ -162,12 +197,34 @@ fn test_encode_zettel_produces_valid_structure() {
 
     let encoded = dialect.encode_zettel(&zettel).unwrap();
 
-    assert!(encoded.starts_with("002:"), "Should start with zettel ID: {}", encoded);
-    assert!(encoded.contains("ALI"), "Should contain entity code ALI: {}", encoded);
-    assert!(encoded.contains("BOB"), "Should contain entity code BOB: {}", encoded);
-    assert!(encoded.contains("joy"), "Should contain emotion code: {}", encoded);
-    assert!(!encoded.contains("Alice"), "Should use entity code ALI instead of name");
-    assert!(!encoded.contains("Bob"), "Should use entity code BOB instead of name");
+    assert!(
+        encoded.starts_with("002:"),
+        "Should start with zettel ID: {}",
+        encoded
+    );
+    assert!(
+        encoded.contains("ALI"),
+        "Should contain entity code ALI: {}",
+        encoded
+    );
+    assert!(
+        encoded.contains("BOB"),
+        "Should contain entity code BOB: {}",
+        encoded
+    );
+    assert!(
+        encoded.contains("joy"),
+        "Should contain emotion code: {}",
+        encoded
+    );
+    assert!(
+        !encoded.contains("Alice"),
+        "Should use entity code ALI instead of name"
+    );
+    assert!(
+        !encoded.contains("Bob"),
+        "Should use entity code BOB instead of name"
+    );
 }
 
 #[test]
@@ -183,9 +240,21 @@ fn test_compression_stats_reports_reasonable_ratio() {
     let comp_tokens = stats["summary_tokens_est"].as_i64().unwrap_or(0);
     let size_ratio = stats["size_ratio"].as_f64().unwrap_or(0.0);
 
-    assert!(orig_tokens > 0, "Original tokens should be > 0, got {}", orig_tokens);
-    assert!(comp_tokens > 0, "Compressed tokens should be > 0, got {}", comp_tokens);
-    assert!(size_ratio > 0.0, "Size ratio should be positive, got {}", size_ratio);
+    assert!(
+        orig_tokens > 0,
+        "Original tokens should be > 0, got {}",
+        orig_tokens
+    );
+    assert!(
+        comp_tokens > 0,
+        "Compressed tokens should be > 0, got {}",
+        comp_tokens
+    );
+    assert!(
+        size_ratio > 0.0,
+        "Size ratio should be positive, got {}",
+        size_ratio
+    );
 }
 
 #[test]

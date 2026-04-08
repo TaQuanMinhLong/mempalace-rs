@@ -15,9 +15,9 @@ use crate::config::Config;
 use crate::error::{MempalaceError, Result};
 use crate::palace::Room;
 use crate::storage::ChromaStorage;
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// Direction for navigation
 #[derive(Debug, Clone, Copy)]
@@ -56,13 +56,12 @@ pub struct RoomNode {
 /// Palace graph for navigation
 #[derive(Debug)]
 pub struct PalaceGraph {
-    storage: Rc<RefCell<ChromaStorage>>,
-    // config: Config, // not stored; Python passes as parameter
+    storage: Arc<Mutex<ChromaStorage>>,
 }
 
 impl PalaceGraph {
     /// Create a new palace graph
-    pub fn new(storage: Rc<RefCell<ChromaStorage>>, _config: Config) -> Self {
+    pub fn new(storage: Arc<Mutex<ChromaStorage>>, _config: Config) -> Self {
         Self { storage }
     }
 
@@ -71,11 +70,13 @@ impl PalaceGraph {
     /// Returns (nodes, edges) where:
     /// - nodes: map of room name -> RoomNode
     /// - edges: list of tunnel connections
-    pub fn build_graph(&self) -> Result<(HashMap<String, RoomNode>, Vec<TunnelEdge>)> {
+    pub async fn build_graph(&self) -> Result<(HashMap<String, RoomNode>, Vec<TunnelEdge>)> {
         let mut room_data: HashMap<String, RoomData> = HashMap::new();
 
-        // Iterate through all drawers in storage
-        let drawers = self.storage.borrow().get_all_drawers();
+        let drawers = {
+            let storage = self.storage.lock().await;
+            storage.get_all_drawers()
+        };
 
         for drawer in drawers {
             let room_name = &drawer.metadata.room;
@@ -136,8 +137,8 @@ impl PalaceGraph {
     /// Forward: move to rooms with shared wings
     /// Backward: move to rooms with overlapping concepts
     /// Tunnel: find tunnel rooms between wings
-    pub fn navigate(&self, from_room: &str, direction: Direction) -> Result<Vec<Room>> {
-        let (nodes, _edges) = self.build_graph()?;
+    pub async fn navigate(&self, from_room: &str, direction: Direction) -> Result<Vec<Room>> {
+        let (nodes, _edges) = self.build_graph().await?;
 
         if nodes.is_empty() {
             return Err(MempalaceError::NotFound(
@@ -206,8 +207,8 @@ impl PalaceGraph {
     ///
     /// A tunnel is a room that exists in both wings, acting as a
     /// hallway connecting them.
-    pub fn find_tunnel(&self, wing_a: &str, wing_b: &str) -> Result<Option<Tunnel>> {
-        let (nodes, _edges) = self.build_graph()?;
+    pub async fn find_tunnel(&self, wing_a: &str, wing_b: &str) -> Result<Option<Tunnel>> {
+        let (nodes, _edges) = self.build_graph().await?;
 
         if nodes.is_empty() {
             return Ok(None);
@@ -228,7 +229,9 @@ impl PalaceGraph {
         // Return the most connected tunnel (most content)
         candidates.sort_by_key(|b| std::cmp::Reverse(b.count));
 
-        let tunnel = candidates.first().unwrap();
+        let Some(tunnel) = candidates.first() else {
+            return Ok(None);
+        };
         Ok(Some(Tunnel {
             room: tunnel.name.clone(),
             wings: tunnel.wings.clone(),
@@ -240,12 +243,12 @@ impl PalaceGraph {
     /// Find all tunnels (rooms spanning multiple wings).
     ///
     /// If wing_a or wing_b is specified, only return tunnels connecting those wings.
-    pub fn find_all_tunnels(
+    pub async fn find_all_tunnels(
         &self,
         wing_a: Option<&str>,
         wing_b: Option<&str>,
     ) -> Result<Vec<Tunnel>> {
-        let (nodes, _edges) = self.build_graph()?;
+        let (nodes, _edges) = self.build_graph().await?;
 
         if nodes.is_empty() {
             return Ok(Vec::new());
@@ -286,8 +289,8 @@ impl PalaceGraph {
     }
 
     /// Get hall content - rooms belonging to a hall category.
-    pub fn get_hall(&self, hall_type: &str) -> Result<Vec<String>> {
-        let (nodes, _edges) = self.build_graph()?;
+    pub async fn get_hall(&self, hall_type: &str) -> Result<Vec<String>> {
+        let (nodes, _edges) = self.build_graph().await?;
 
         if nodes.is_empty() {
             return Err(MempalaceError::NotFound(
@@ -307,8 +310,8 @@ impl PalaceGraph {
     }
 
     /// Get graph statistics
-    pub fn graph_stats(&self) -> Result<GraphStats> {
-        let (nodes, edges) = self.build_graph()?;
+    pub async fn graph_stats(&self) -> Result<GraphStats> {
+        let (nodes, edges) = self.build_graph().await?;
 
         let tunnel_rooms = nodes.values().filter(|n| n.wings.len() >= 2).count();
 

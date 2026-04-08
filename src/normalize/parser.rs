@@ -240,7 +240,7 @@ impl ChatParser {
             // Privacy export: array of conversation objects with chat_messages inside
             if data.get(0).and_then(|v| v.get("chat_messages")).is_some() {
                 let mut all_messages = Vec::new();
-                for convo in data.as_array().unwrap() {
+                for convo in data.as_array().into_iter().flatten() {
                     if let Some(chat_messages) =
                         convo.get("chat_messages").and_then(|v| v.as_array())
                     {
@@ -255,8 +255,8 @@ impl ChatParser {
             } else {
                 // Flat messages list
                 data.as_array()
-                    .unwrap()
-                    .iter()
+                    .into_iter()
+                    .flatten()
                     .filter_map(|item| self.extract_claude_message(item))
                     .collect()
             }
@@ -383,7 +383,9 @@ impl ChatParser {
         // Collect exchanges in topological order
         let mut messages = Vec::new();
         for node_id in order {
-            let node = mapping.get(node_id.as_str()).unwrap();
+            let Some(node) = mapping.get(node_id.as_str()) else {
+                continue;
+            };
             let msg = node.get("message");
 
             if let Some(msg_obj) = msg.and_then(|v| v.as_object()) {

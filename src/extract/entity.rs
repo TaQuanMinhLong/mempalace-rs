@@ -468,8 +468,16 @@ impl EntityExtractor {
         }
 
         // Sort by confidence descending
-        people.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
-        projects.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        people.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        projects.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         uncertain.sort_by_key(|v| Reverse(v.frequency));
 
         DetectedEntities {

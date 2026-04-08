@@ -515,7 +515,11 @@ impl FileMiner {
                     "mempalace",
                 )?;
 
-                let mut storage = self.storage.lock().unwrap();
+                let mut storage = self.storage.lock().map_err(|_| {
+                    crate::error::MempalaceError::Mining(
+                        "storage lock poisoned while adding drawer".to_string(),
+                    )
+                })?;
                 storage.add_drawer(&drawer)?;
                 drawers_created += 1;
             }
