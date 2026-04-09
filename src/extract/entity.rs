@@ -719,6 +719,7 @@ impl EntityExtractor {
 }
 
 impl Default for EntityExtractor {
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -753,6 +754,7 @@ pub struct Entity {
 
 impl Entity {
     /// Format entity as a display string
+    #[inline]
     pub fn display(&self) -> String {
         let type_str = match self.entity_type {
             EntityType::Person => "person",
@@ -776,6 +778,7 @@ pub struct DetectedEntities {
 
 impl DetectedEntities {
     /// Get all entities
+    #[inline]
     pub fn all(&self) -> Vec<Entity> {
         let mut all = Vec::new();
         all.extend(self.people.clone());
@@ -785,11 +788,13 @@ impl DetectedEntities {
     }
 
     /// Get person names
+    #[inline]
     pub fn person_names(&self) -> Vec<String> {
         self.people.iter().map(|e| e.name.clone()).collect()
     }
 
     /// Get project names
+    #[inline]
     pub fn project_names(&self) -> Vec<String> {
         self.projects.iter().map(|e| e.name.clone()).collect()
     }

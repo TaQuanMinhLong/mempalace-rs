@@ -175,6 +175,25 @@ pub struct GraphStats {
     pub relationship_types: Vec<String>,
 }
 
+impl GraphStats {
+    #[inline]
+    pub fn new(
+        entities: usize,
+        triples: usize,
+        current_facts: usize,
+        expired_facts: usize,
+        relationship_types: Vec<String>,
+    ) -> Self {
+        Self {
+            entities,
+            triples,
+            current_facts,
+            expired_facts,
+            relationship_types,
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "../tests/graph_knowledge.rs"]
 mod tests;

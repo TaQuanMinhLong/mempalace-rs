@@ -1,0 +1,108 @@
+{
+  "mp_summary": {
+    "cases": 10,
+    "avg_recall": 1.0,
+    "avg_hit": 1.0,
+    "avg_top1": 1.0,
+    "avg_mrr": 1.0
+  },
+  "bl_summary": {
+    "cases": 10,
+    "avg_recall": 1.0,
+    "avg_hit": 1.0,
+    "avg_top1": 1.0,
+    "avg_mrr": 1.0
+  },
+  "per_case": [
+    {
+      "case_id": "purchase_lookup",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "deployment_lookup",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "auth_lookup",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "temporal_conflict",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "semantic_ambiguity",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "entity_collision",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "multi_hit_case",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "ambiguous_wing",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "conflicting_facts",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    },
+    {
+      "case_id": "hard_entity_lookup",
+      "mp_recall": 1.0,
+      "bl_recall": 1.0,
+      "mp_hit": true,
+      "bl_hit": true,
+      "mp_mrr": 1.0,
+      "bl_mrr": 1.0
+    }
+  ]
+}

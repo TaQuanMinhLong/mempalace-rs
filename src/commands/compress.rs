@@ -20,15 +20,21 @@ pub fn run(wing: &str, room: Option<&str>) -> Result<()> {
     println!("  Found {} drawer(s) to compress", drawers.len());
 
     let dialect = AaakDialect::new();
-    let mut original_tokens = 0;
-    let mut compressed_tokens = 0;
+    let mut original_tokens_measured = 0usize;
+    let mut compressed_tokens_measured = 0usize;
+    let mut original_tokens_est = 0usize;
+    let mut compressed_tokens_est = 0usize;
 
     for drawer in &drawers {
-        original_tokens += drawer.document.chars().count() / 4;
-
         match dialect.compress(&drawer.document) {
             Ok(compressed) => {
-                compressed_tokens += compressed.chars().count() / 4;
+                let stats = dialect.compression_stats(&drawer.document, &compressed);
+                original_tokens_measured +=
+                    stats["original_tokens_measured"].as_u64().unwrap_or(0) as usize;
+                compressed_tokens_measured +=
+                    stats["summary_tokens_measured"].as_u64().unwrap_or(0) as usize;
+                original_tokens_est += stats["original_tokens_est"].as_u64().unwrap_or(0) as usize;
+                compressed_tokens_est += stats["summary_tokens_est"].as_u64().unwrap_or(0) as usize;
 
                 if drawer.document.len() > 50 {
                     println!(
@@ -46,15 +52,25 @@ pub fn run(wing: &str, room: Option<&str>) -> Result<()> {
         }
     }
 
-    if original_tokens > 0 {
-        let ratio = (compressed_tokens as f64 / original_tokens as f64 * 100.0) as usize;
+    if original_tokens_measured > 0 {
+        let measured_ratio =
+            (compressed_tokens_measured as f64 / original_tokens_measured as f64 * 100.0) as usize;
+        let estimated_ratio =
+            (compressed_tokens_est as f64 / original_tokens_est.max(1) as f64 * 100.0) as usize;
         println!("\n  Compression complete!");
-        println!("    Original: ~{} tokens", original_tokens);
-        println!("    Compressed: ~{} tokens", compressed_tokens);
-        println!("    Ratio: {}%", ratio);
+        println!(
+            "    Measured by local tokenizer (not model-accurate): {} -> {} tokens ({}%)",
+            original_tokens_measured, compressed_tokens_measured, measured_ratio
+        );
+        println!(
+            "    Estimated (openai heuristic): {} -> {} tokens ({}%)",
+            original_tokens_est, compressed_tokens_est, estimated_ratio
+        );
     }
 
-    println!("\n  Note: AAAK compression is experimental. Review compressed content before replacing originals.");
+    println!(
+        "\n  Note: AAAK compression is lossy. Local measured counts come from a deterministic local tokenizer and are not model-accurate; vendor-specific token counts remain estimates until dedicated tokenizers are added."
+    );
 
     Ok(())
 }

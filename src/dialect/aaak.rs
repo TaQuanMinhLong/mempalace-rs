@@ -11,6 +11,7 @@
 //!   Arc:      ARC:emotion->emotion->emotion
 
 use crate::error::{MempalaceError, Result};
+use crate::tokenizer::{estimate_openai_tokens, LocalTokenizer, TokenCount, Tokenizer};
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
@@ -130,6 +131,15 @@ static FLAG_SIGNALS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::n
 });
 
 /// Common stop words to filter from topic extraction
+static TOPIC_WORD_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"[a-zA-Z][a-zA-Z_-]{2,}").unwrap());
+static SENTENCE_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"[^.!?\n]+[.!?\n]+").unwrap());
+static DOUBLE_QUOTE_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"\"([^\"]{8,55})\""#).unwrap());
+static SINGLE_QUOTE_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"(?:^|[\s(])'([^']{8,55})'").unwrap());
+
 static STOP_WORDS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     let words: HashSet<&str> = [
         "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
@@ -176,6 +186,13 @@ static DECISION_WORDS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     .collect()
 });
 
+/// Structured token accounting for compression results.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompressionTokenStats {
+    pub original: TokenCount,
+    pub compressed: TokenCount,
+}
+
 /// AAAK dialect compressor
 #[derive(Debug, Clone)]
 pub struct AaakDialect {
@@ -185,6 +202,7 @@ pub struct AaakDialect {
 
 impl AaakDialect {
     /// Create a new AAAK dialect compressor
+    #[inline]
     pub fn new() -> Self {
         Self {
             entity_codes: HashMap::new(),
@@ -192,28 +210,29 @@ impl AaakDialect {
         }
     }
 
-    /// Create with custom entity mappings
-    pub fn with_entities(entities: HashMap<String, String>) -> Self {
-        let mut entity_codes = HashMap::new();
-        for (name, code) in entities {
-            entity_codes.insert(name.clone(), code.clone());
-            entity_codes.insert(name.to_lowercase(), code);
-        }
-        Self {
-            entity_codes,
-            skip_names: Vec::new(),
-        }
-    }
+    // /// Create with custom entity mappings
+    // pub fn with_entities(entities: HashMap<String, String>) -> Self {
+    //     let mut entity_codes = HashMap::new();
+    //     for (name, code) in entities {
+    //         entity_codes.insert(name.clone(), code.clone());
+    //         entity_codes.insert(name.to_lowercase(), code);
+    //     }
+    //     Self {
+    //         entity_codes,
+    //         skip_names: Vec::new(),
+    //     }
+    // }
 
-    /// Create with skip names
-    pub fn with_skip_names(skip_names: Vec<String>) -> Self {
-        Self {
-            entity_codes: HashMap::new(),
-            skip_names: skip_names.iter().map(|n| n.to_lowercase()).collect(),
-        }
-    }
+    // /// Create with skip names
+    // pub fn with_skip_names(skip_names: Vec<String>) -> Self {
+    //     Self {
+    //         entity_codes: HashMap::new(),
+    //         skip_names: skip_names.iter().map(|n| n.to_lowercase()).collect(),
+    //     }
+    // }
 
     /// Add an entity mapping
+    #[inline]
     pub fn add_entity(&mut self, name: &str, code: &str) {
         self.entity_codes.insert(name.to_string(), code.to_string());
         self.entity_codes
@@ -221,6 +240,7 @@ impl AaakDialect {
     }
 
     /// Skip an entity name
+    #[inline]
     pub fn skip_entity(&mut self, name: &str) {
         self.skip_names.push(name.to_lowercase());
     }
@@ -406,16 +426,82 @@ impl AaakDialect {
         Ok(lines.join("\n"))
     }
 
-    /// Decompress AAAK format back to a summary (lossy - cannot recover original)
-    pub fn decompress(&self, _aaak: &str) -> Result<String> {
-        // AAAK is lossy compression - we cannot recover the original text
-        // This method parses AAAK back into a readable summary structure
-        Err(MempalaceError::ParseError(
-            "AAAK decompression is not supported - it is a lossy format".to_string(),
-        ))
-    }
+    /// Render AAAK output into a readable summary.
+    #[inline]
+    pub fn render_summary(&self, aaak: &str) -> Result<String> {
+        let lines: Vec<&str> = aaak
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .collect();
 
+        if lines.is_empty() {
+            return Err(MempalaceError::ParseError(
+                "AAAK content is empty".to_string(),
+            ));
+        }
+
+        let mut summary = Vec::new();
+
+        for line in lines {
+            if line.starts_with("T:") || line.starts_with("ARC:") {
+                continue;
+            }
+
+            let parts: Vec<&str> = line.split('|').collect();
+            if parts.len() < 2 {
+                continue;
+            }
+
+            let first = parts[0];
+            if !first.contains(':') {
+                if parts.len() >= 4 {
+                    summary.push(format!(
+                        "File {} in {} on {}: {}",
+                        parts[0], parts[1], parts[2], parts[3]
+                    ));
+                }
+                continue;
+            }
+
+            let mut detail = Vec::new();
+            let mut id_and_entities = first.splitn(2, ':');
+            let zettel_id = id_and_entities.next().unwrap_or("?");
+            let entities = id_and_entities.next().unwrap_or("?").replace('+', ", ");
+            detail.push(format!("Zettel {} with {}", zettel_id, entities));
+
+            if let Some(topic_part) = parts.get(1) {
+                let topics = topic_part.replace('_', ", ");
+                if !topics.is_empty() {
+                    detail.push(format!("topics: {}", topics));
+                }
+            }
+
+            for part in parts.iter().skip(2) {
+                if part.starts_with('"') && part.ends_with('"') && part.len() >= 2 {
+                    detail.push(format!("quote: {}", &part[1..part.len() - 1]));
+                } else if part.chars().all(|c| c.is_ascii_uppercase() || c == '+') {
+                    detail.push(format!("flags: {}", part.replace('+', ", ")));
+                } else if part.contains('+') {
+                    detail.push(format!("codes: {}", part.replace('+', ", ")));
+                } else if part.parse::<f64>().is_ok() {
+                    detail.push(format!("weight: {}", part));
+                }
+            }
+
+            summary.push(detail.join(" | "));
+        }
+
+        if summary.is_empty() {
+            return Err(MempalaceError::ParseError(
+                "AAAK content did not contain readable summary lines".to_string(),
+            ));
+        }
+
+        Ok(summary.join("\n"))
+    }
     /// Map emotion word to code
+    #[inline]
     pub fn emotion_code(&self, emotion: &str) -> Option<&'static str> {
         EMOTION_CODES.get(emotion.to_lowercase().as_str()).copied()
     }
@@ -456,12 +542,9 @@ impl AaakDialect {
 
     /// Extract key topic words from plain text
     fn extract_topics(&self, text: &str) -> Vec<String> {
-        // Tokenize: find alphabetic words with 2+ chars
-        let word_regex = regex::Regex::new(r"[a-zA-Z][a-zA-Z_-]{2,}").unwrap();
-
         let mut freq: HashMap<String, i32> = HashMap::new();
 
-        for cap in word_regex.find_iter(text) {
+        for cap in TOPIC_WORD_RE.find_iter(text) {
             let w = cap.as_str();
             let w_lower = w.to_lowercase();
 
@@ -494,11 +577,8 @@ impl AaakDialect {
 
     /// Extract the most important sentence fragment from text
     fn extract_key_sentence(&self, text: &str) -> String {
-        // Split into sentences
-        let sentence_regex = regex::Regex::new(r"[^.!?\n]+[.!?\n]+").unwrap();
-
         let mut sentences: Vec<String> = Vec::new();
-        for cap in sentence_regex.find_iter(text) {
+        for cap in SENTENCE_RE.find_iter(text) {
             let s = cap.as_str().trim().to_string();
             if s.len() > 10 {
                 sentences.push(s);
@@ -604,6 +684,7 @@ impl AaakDialect {
     }
 
     /// Extract flags from zettel metadata
+    #[inline]
     fn get_flags_from_zettel(&self, zettel: &serde_json::Value) -> String {
         let mut flags = Vec::new();
 
@@ -647,6 +728,7 @@ impl AaakDialect {
     }
 
     /// Encode emotions from zettel emotional_tone field
+    #[inline]
     fn encode_emotions_from_tone(&self, tones: &[serde_json::Value]) -> String {
         let mut codes = Vec::new();
         let mut seen = HashSet::new();
@@ -746,6 +828,7 @@ impl AaakDialect {
     }
 
     /// Extract key quote from zettel content
+    #[inline]
     fn extract_key_quote(&self, zettel: &serde_json::Value) -> String {
         let content = zettel.get("content").and_then(|v| v.as_str()).unwrap_or("");
         let origin = zettel
@@ -757,17 +840,14 @@ impl AaakDialect {
 
         let all_text = format!("{} {} {} {}", content, origin, notes, title);
 
-        // Find quoted text
-        let quote_regex = regex::Regex::new(r#""([^"]{8,55})""#).unwrap();
-        let mut quotes: Vec<String> = quote_regex
+        let mut quotes: Vec<String> = DOUBLE_QUOTE_RE
             .captures_iter(&all_text)
             .filter_map(|cap| cap.get(1).map(|m| m.as_str().to_string()))
             .filter(|q| q.len() >= 8)
             .collect();
 
         // Find single-quoted text
-        let single_quote_regex = regex::Regex::new(r"(?:^|[\s(])'([^']{8,55})'").unwrap();
-        for cap in single_quote_regex.captures_iter(&all_text) {
+        for cap in SINGLE_QUOTE_RE.captures_iter(&all_text) {
             if let Some(m) = cap.get(1) {
                 let q = m.as_str();
                 if q.len() >= 8 && !quotes.contains(&q.to_string()) {
@@ -857,6 +937,7 @@ impl AaakDialect {
     }
 
     /// Encode a tunnel connection
+    #[inline]
     pub fn encode_tunnel(&self, tunnel: &serde_json::Value) -> Result<String> {
         let from = tunnel
             .get("from")
@@ -1014,28 +1095,65 @@ impl AaakDialect {
         Ok(result)
     }
 
+    /// Token stats for original and compressed text using explicit tokenizer provenance.
+    #[must_use]
+    pub fn token_stats(&self, original_text: &str, compressed: &str) -> CompressionTokenStats {
+        let tokenizer = LocalTokenizer::new();
+        CompressionTokenStats {
+            original: tokenizer.count(original_text),
+            compressed: tokenizer.count(compressed),
+        }
+    }
+
     /// Get compression statistics
     pub fn compression_stats(
         &self,
         original_text: &str,
         compressed: &str,
     ) -> HashMap<String, serde_json::Value> {
-        let orig_tokens = Self::count_tokens(original_text);
-        let comp_tokens = Self::count_tokens(compressed);
+        let measured = self.token_stats(original_text, compressed);
+        let estimated_original = estimate_openai_tokens(original_text);
+        let estimated_compressed = estimate_openai_tokens(compressed);
 
         let mut stats = HashMap::new();
         stats.insert(
+            "original_tokens_measured".to_string(),
+            serde_json::json!(measured.original.tokens),
+        );
+        stats.insert(
+            "summary_tokens_measured".to_string(),
+            serde_json::json!(measured.compressed.tokens),
+        );
+        stats.insert(
+            "measured_tokenizer".to_string(),
+            serde_json::json!(measured.original.kind.as_str()),
+        );
+        stats.insert(
+            "measured_status".to_string(),
+            serde_json::json!(measured.original.status.as_str()),
+        );
+        stats.insert(
             "original_tokens_est".to_string(),
-            serde_json::json!(orig_tokens),
+            serde_json::json!(estimated_original.tokens),
         );
         stats.insert(
             "summary_tokens_est".to_string(),
-            serde_json::json!(comp_tokens),
+            serde_json::json!(estimated_compressed.tokens),
+        );
+        stats.insert(
+            "estimated_tokenizer".to_string(),
+            serde_json::json!(estimated_original.kind.as_str()),
+        );
+        stats.insert(
+            "estimated_status".to_string(),
+            serde_json::json!(estimated_original.status.as_str()),
         );
         stats.insert(
             "size_ratio".to_string(),
             serde_json::json!(
-                (orig_tokens as f64 / comp_tokens.max(1) as f64 * 10.0).round() / 10.0
+                (measured.original.tokens as f64 / measured.compressed.tokens.max(1) as f64 * 10.0)
+                    .round()
+                    / 10.0
             ),
         );
         stats.insert(
@@ -1048,20 +1166,21 @@ impl AaakDialect {
         );
         stats.insert(
             "note".to_string(),
-            serde_json::json!("Estimates only. AAAK is lossy."),
+            serde_json::json!("AAAK is lossy. Measured counts use a deterministic local tokenizer and are not model-accurate; OpenAI counts remain estimates until a model-specific tokenizer is integrated."),
         );
 
         stats
     }
 
-    /// Estimate token count using word-based heuristic (~1.3 tokens per word)
+    /// Estimate token count using the legacy heuristic (~1.3 tokens per word)
+    #[inline]
     pub fn count_tokens(text: &str) -> usize {
-        let words: Vec<&str> = text.split_whitespace().collect();
-        (words.len() as f64 * 1.3).ceil() as usize
+        estimate_openai_tokens(text).tokens
     }
 }
 
 impl Default for AaakDialect {
+    #[inline]
     fn default() -> Self {
         Self::new()
     }

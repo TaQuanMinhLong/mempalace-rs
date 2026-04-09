@@ -16,7 +16,7 @@ use crate::storage::{Entity as KgEntity, EntityType as KgEntityType, KnowledgeGr
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 
 /// Default chunk size in characters
 const CHUNK_SIZE: usize = 800;
@@ -24,6 +24,9 @@ const CHUNK_SIZE: usize = 800;
 const CHUNK_OVERLAP: usize = 100;
 /// Minimum chunk size
 const MIN_CHUNK_SIZE: usize = 50;
+
+static CAPITALIZED_ENTITY_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"\b([A-Z][a-z]{2,20})\b").unwrap());
 
 /// Readable file extensions
 const READABLE_EXTENSIONS: &[&str] = &[
@@ -811,8 +814,7 @@ impl FileMiner {
         // Look for capitalized words that appear frequently
         let mut counts: HashMap<String, usize> = HashMap::new();
 
-        let re = regex::Regex::new(r"\b([A-Z][a-z]{2,20})\b").unwrap();
-        for cap in re.find_iter(content) {
+        for cap in CAPITALIZED_ENTITY_RE.find_iter(content) {
             let word = cap.as_str();
             let word_lower = word.to_lowercase();
             // Skip if it's a common word

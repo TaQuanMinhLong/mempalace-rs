@@ -1,4 +1,5 @@
 use super::*;
+use crate::layers::SearchHit;
 use std::sync::Arc;
 use tempfile::tempdir;
 use tokio::sync::Mutex;
@@ -6,6 +7,7 @@ use tokio::sync::Mutex;
 #[test]
 fn test_search_result_creation() {
     let hit = SearchHit {
+        document_id: Some("doc_1".to_string()),
         text: "Test document content".to_string(),
         wing: "wing_test".to_string(),
         room: "room_test".to_string(),

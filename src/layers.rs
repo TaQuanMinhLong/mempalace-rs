@@ -376,8 +376,9 @@ impl Layer3 {
 }
 
 /// Search hit with metadata
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SearchHit {
+    pub document_id: Option<String>,
     pub text: String,
     pub wing: String,
     pub room: String,
@@ -390,6 +391,7 @@ impl SearchHit {
     pub fn from_drawer(drawer: &Drawer, distance: Option<f64>) -> Self {
         let similarity = distance.map(|d| (1.0 - d).round() / 1000.0).unwrap_or(1.0);
         Self {
+            document_id: Some(drawer.id.clone()),
             text: drawer.document.clone(),
             wing: drawer.metadata.wing.clone(),
             room: drawer.metadata.room.clone(),

@@ -21,6 +21,10 @@ static RE_SUBJECT_SKIP: LazyLock<Regex> = LazyLock::new(|| {
 });
 static RE_CLEAN_NONWORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[^\w\s-]").unwrap());
 static RE_CLEAN_SPACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
+static RE_TIMESTAMP: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"⏺\s+(\d{1,2}:\d{2}\s+[AP]M)\s+\w+,\s+(\w+)\s+(\d{1,2}),\s+(\d{4})").unwrap()
+});
+static RE_USER_PATH: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"/Users/(\w+)/").unwrap());
 
 /// Pre-compiled regexes for filename cleaning
 static RE_STEM_CLEAN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[^\w-]").unwrap());
@@ -97,9 +101,6 @@ fn find_session_boundaries(lines: &[String]) -> Vec<usize> {
 
 /// Extract timestamp from session lines
 fn extract_timestamp(lines: &[String]) -> Option<(String, String)> {
-    let ts_pattern =
-        Regex::new(r"⏺\s+(\d{1,2}:\d{2}\s+[AP]M)\s+\w+,\s+(\w+)\s+(\d{1,2}),\s+(\d{4})").ok()?;
-
     let months: HashMap<&str, &str> = [
         ("January", "01"),
         ("February", "02"),
@@ -119,7 +120,7 @@ fn extract_timestamp(lines: &[String]) -> Option<(String, String)> {
     .collect();
 
     for line in lines.iter().take(50) {
-        if let Some(m) = ts_pattern.captures(line) {
+        if let Some(m) = RE_TIMESTAMP.captures(line) {
             let time_str = m.get(1)?.as_str();
             let month = m.get(2)?.as_str();
             let day = m.get(3)?.as_str();
@@ -161,10 +162,7 @@ fn extract_people(lines: &[String]) -> Vec<String> {
     }
 
     // Find usernames in paths and map them
-    if let Some(dir_match) = Regex::new(r"/Users/(\w+)/")
-        .ok()
-        .and_then(|r| r.captures(&text))
-    {
+    if let Some(dir_match) = RE_USER_PATH.captures(&text) {
         if let Some(username) = dir_match.get(1) {
             let username_str = username.as_str();
             if let Some(name) = username_map.get(username_str) {

@@ -239,6 +239,7 @@ impl ChromaStorage {
             let similarity = ((rank / 20.0).exp()).clamp(0.0, 1.0);
 
             Ok(SearchHit {
+                document_id: Some(row.get(0)?),
                 text: row.get(1)?,
                 wing: row.get(2)?,
                 room: row.get(3)?,

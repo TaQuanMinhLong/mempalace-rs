@@ -217,13 +217,11 @@ fn test_encode_zettel_produces_valid_structure() {
         "Should contain emotion code: {}",
         encoded
     );
+    let entity_field = encoded.split('|').next().unwrap_or("");
     assert!(
-        !encoded.contains("Alice"),
-        "Should use entity code ALI instead of name"
-    );
-    assert!(
-        !encoded.contains("Bob"),
-        "Should use entity code BOB instead of name"
+        entity_field.contains("ALI") && entity_field.contains("BOB"),
+        "Entity field should use codes: {}",
+        encoded
     );
 }
 
@@ -272,8 +270,15 @@ fn test_topic_extraction() {
 }
 
 #[test]
-fn test_decompress_not_supported() {
+fn test_render_summary_returns_readable_output() {
     let dialect = AaakDialect::new();
-    let result = dialect.decompress("some aaak content");
-    assert!(result.is_err());
+    let result = dialect
+        .render_summary("1|ALI|2026-04-09|deploy_notes\n0:ALI+BOB|deploy_bug|\"env var missing\"|0.8|anx+determ|CORE")
+        .unwrap();
+
+    assert!(result.contains("File 1 in ALI on 2026-04-09: deploy_notes"));
+    assert!(result.contains("Zettel 0 with ALI, BOB"));
+    assert!(result.contains("topics: deploy, bug"));
+    assert!(result.contains("quote: env var missing"));
+    assert!(result.contains("flags: CORE"));
 }

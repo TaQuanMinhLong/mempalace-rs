@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use crate::config::Config;
 use crate::error::Result;
 
+#[cfg(feature = "bench")]
+pub mod benchmark;
 pub mod compress;
 pub mod init;
 pub mod mine;
@@ -21,6 +23,16 @@ pub enum Commands {
     Init {
         /// Project directory
         dir: PathBuf,
+    },
+    /// Run benchmark fixtures
+    #[cfg(feature = "bench")]
+    Benchmark {
+        /// Fixture file path
+        #[arg(long)]
+        fixture: Option<String>,
+        /// Recall cutoff
+        #[arg(long, default_value_t = 5)]
+        limit: usize,
     },
     /// Mine files or conversations
     Mine {
@@ -77,6 +89,8 @@ pub enum Commands {
 
 pub async fn run(command: Commands) -> Result<()> {
     match command {
+        #[cfg(feature = "bench")]
+        Commands::Benchmark { fixture, limit } => benchmark::run(fixture.as_deref(), limit),
         Commands::Init { dir } => init::run(&dir),
         Commands::Mine { dir, mode, agent } => mine::run(&dir, &mode, &agent),
         Commands::Search {
@@ -140,6 +154,6 @@ pub fn wing_name_from_dir(dir: &std::path::Path) -> String {
 }
 
 #[inline]
-fn load_config() -> Result<Config> {
+pub(crate) fn load_config() -> Result<Config> {
     Config::load()
 }

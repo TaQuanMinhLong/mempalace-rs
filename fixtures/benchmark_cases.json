@@ -1,0 +1,175 @@
+[
+	{
+		"id": "purchase_lookup",
+		"query": "user bought laptop",
+		"expected_ids": ["event_1"],
+		"wing": "wing_benchmark",
+		"room": "purchases",
+		"docs": [
+			{
+				"id": "event_1",
+				"content": "User completed checkout for 15-inch MacBook Pro on 2024-03-15. Receipt sent to user email. Order #MP2024-0315 confirmed."
+			}
+		]
+	},
+	{
+		"id": "deployment_lookup",
+		"query": "deploy failed because env var missing",
+		"expected_ids": ["event_2"],
+		"wing": "wing_benchmark",
+		"room": "deploy",
+		"docs": [
+			{
+				"id": "event_2",
+				"content": "Staging pipeline aborted at container-build step. CI log showed DATABASE_URL not defined in production config. Rollout blocked on ops rotation."
+			}
+		]
+	},
+	{
+		"id": "auth_lookup",
+		"query": "oauth callback mismatch bug",
+		"expected_ids": ["event_3"],
+		"wing": "wing_benchmark",
+		"room": "auth",
+		"docs": [
+			{
+				"id": "event_3",
+				"content": "Users reported SSO failure after IdP redirect. Traced to state parameter mismatch between old and new redirect URIs. Hotfix merged to auth-v2 branch."
+			}
+		]
+	},
+	{
+		"id": "temporal_conflict",
+		"query": "user current job",
+		"expected_ids": ["event_recent_job"],
+		"wing": "wing_benchmark",
+		"room": "careers",
+		"category": "adversarial",
+		"docs": [
+			{
+				"id": "event_old_job",
+				"content": "User mentioned switching to frontend work at Acme in early 2021. Previously worked as QA tester for two years."
+			},
+			{
+				"id": "event_recent_job",
+				"content": "As of Q4 2024, user accepted a senior backend role at NexCorp. Starting date confirmed for January 2025. Previous role at Acme ended amicably in December 2024."
+			}
+		]
+	},
+	{
+		"id": "semantic_ambiguity",
+		"query": "python script failing",
+		"expected_ids": ["event_python_issue"],
+		"wing": "wing_benchmark",
+		"room": "scripting",
+		"category": "adversarial",
+		"docs": [
+			{
+				"id": "event_other_python_issue",
+				"content": "Discussed best practices for Python virtual environments. Recommend pyenv for managing multiple Python versions across projects."
+			},
+			{
+				"id": "event_python_issue",
+				"content": "The data pipeline broke after upgrading pandas to 2.1. The read_csv call started throwing a dtype error on the timestamp column. Workaround pinned pandas to 2.0.3 until we migrated the schema."
+			}
+		]
+	},
+	{
+		"id": "entity_collision",
+		"query": "alice deployed the service",
+		"expected_ids": ["event_alice_deploy"],
+		"wing": "wing_benchmark",
+		"room": "deployments",
+		"category": "adversarial",
+		"docs": [
+			{
+				"id": "event_bob_deploy",
+				"content": "Bob pushed the v3 release to prod on Friday. The canary passed all health checks and traffic shifted gradually over 30 minutes."
+			},
+			{
+				"id": "event_alice_deploy",
+				"content": "Alice ran the deploy script for the payments microservice manually after CI went down. Version 1.4.2 is now live in the us-east region."
+			}
+		]
+	},
+	{
+		"id": "multi_hit_case",
+		"query": "frontend build broken",
+		"expected_ids": ["event_build_1", "event_build_2"],
+		"wing": "wing_benchmark",
+		"room": "ci",
+		"category": "adversarial",
+		"docs": [
+			{
+				"id": "event_build_1",
+				"content": "Webpack 5 upgrade caused module resolution failures in the dashboard. The alias configuration for @components was dropped during migration."
+			},
+			{
+				"id": "event_build_2",
+				"content": "TypeScript 5.4 stricter null checking flagged 47 errors across the UI codebase. Sprint backlog updated to address all non-null assertions."
+			},
+			{
+				"id": "event_build_other",
+				"content": "Build cache eviction policy changed from LRU to LFU to improve warm-start times for the CI runners."
+			}
+		]
+	},
+	{
+		"id": "ambiguous_wing",
+		"query": "server timeout issue",
+		"expected_ids": ["event_timeout"],
+		"wing": null,
+		"room": null,
+		"category": "adversarial",
+		"docs": [
+			{
+				"id": "event_timeout_other",
+				"content": "Discussed increasing the API gateway timeout from 30s to 60s for long-running report generation endpoints."
+			},
+			{
+				"id": "event_timeout",
+				"content": "Production API returned 504 intermittently between 02:00 and 04:00 UTC. Root cause: connection pool exhaustion on the primary database. Connection limit doubled as a stopgap."
+			}
+		]
+	},
+	{
+		"id": "conflicting_facts",
+		"query": "database migration status",
+		"expected_ids": ["event_migration_v2"],
+		"wing": "wing_benchmark",
+		"room": "database",
+		"category": "adversarial",
+		"docs": [
+			{
+				"id": "event_migration_v1",
+				"content": "Initial migration script added the users_v1 table in August 2023. This was superseded by the v2 schema redesign in January 2024."
+			},
+			{
+				"id": "event_migration_v2",
+				"content": "Migration v2 completed successfully on 2024-02-10. The old users_v1 table was archived and read replicas now point to the new schema. No rollback needed."
+			},
+			{
+				"id": "event_migration_v3_planned",
+				"content": "Planning a v3 migration to partition the events table by date. Targeted for Q3 2025 pending stakeholder review."
+			}
+		]
+	},
+	{
+		"id": "hard_entity_lookup",
+		"query": "alice pushed the auth fix yesterday",
+		"expected_ids": ["event_alice_auth_fix"],
+		"wing": "wing_benchmark",
+		"room": "auth",
+		"category": "adversarial",
+		"docs": [
+			{
+				"id": "event_bob_auth",
+				"content": "Bob started investigating the token refresh issue but handed it off to the auth team after hitting a dead end on the JWT scope validation."
+			},
+			{
+				"id": "event_alice_auth_fix",
+				"content": "Alice merged PR #847 to fix the OIDC redirect loop. The issue was caused by a stale session cookie not being cleared on logout. Fix shipped to prod on Tuesday afternoon."
+			}
+		]
+	}
+]

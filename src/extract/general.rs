@@ -9,6 +9,48 @@
 
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::sync::LazyLock;
+
+static CODE_LINE_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    vec![
+        Regex::new(r"^\s*[\$#]\s").unwrap(),
+        Regex::new(r"^\s*(cd|source|echo|export|pip|npm|git|python|bash|curl|wget|mkdir|rm|cp|mv|ls|cat|grep|find|chmod|sudo|brew|docker)\s").unwrap(),
+        Regex::new(r"^\s*```").unwrap(),
+        Regex::new(r"^\s*(import|from|def|class|function|const|let|var|return)\s").unwrap(),
+        Regex::new(r"^\s*[A-Z_]{2,}=").unwrap(),
+        Regex::new(r"^\s*\|").unwrap(),
+        Regex::new(r"^\s*[-]{2,}").unwrap(),
+        Regex::new(r"^\s*[{}\[\]]\s*$").unwrap(),
+        Regex::new(r"^\s*(if|for|while|try|except|elif|else:)\b").unwrap(),
+        Regex::new(r"^\s*\w+\.\w+\(").unwrap(),
+        Regex::new(r"^\s*\w+ = \w+\.\w+").unwrap(),
+    ]
+});
+
+static RESOLUTION_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    [
+        r"\bfixed\b",
+        r"\bsolved\b",
+        r"\bresolved\b",
+        r"\bpatched\b",
+        r"\bgot it working\b",
+        r"\bit works\b",
+        r"\bnailed it\b",
+        r"\bfigured (it )?out\b",
+        r"\bthe (fix|answer|solution)\b",
+    ]
+    .iter()
+    .map(|pattern| Regex::new(pattern).unwrap())
+    .collect()
+});
+
+static TURN_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    vec![
+        Regex::new(r"^>\s").unwrap(),
+        Regex::new(r"^(Human|User|Q)\s*:").unwrap(),
+        Regex::new(r"^(Assistant|AI|A|Claude|ChatGPT)\s*:").unwrap(),
+    ]
+});
 
 /// General extractor for 5 memory types
 #[derive(Debug, Clone)]
@@ -18,7 +60,6 @@ pub struct GeneralExtractor {
     milestone_patterns: Vec<Regex>,
     problem_patterns: Vec<Regex>,
     emotional_patterns: Vec<Regex>,
-    code_line_patterns: Vec<Regex>,
     positive_words: HashMap<String, bool>,
     negative_words: HashMap<String, bool>,
 }
@@ -155,7 +196,6 @@ impl GeneralExtractor {
                 r"nobody knows",
                 r"\*[^*]+\*",
             ]),
-            code_line_patterns: Self::compile_code_patterns(),
             positive_words: Self::build_word_set(&[
                 "pride",
                 "proud",
@@ -220,26 +260,12 @@ impl GeneralExtractor {
         }
     }
 
+    #[inline]
     fn compile_patterns(patterns: &[&str]) -> Vec<Regex> {
         patterns.iter().filter_map(|p| Regex::new(p).ok()).collect()
     }
 
-    fn compile_code_patterns() -> Vec<Regex> {
-        vec![
-            Regex::new(r"^\s*[\$#]\s").unwrap(),
-            Regex::new(r"^\s*(cd|source|echo|export|pip|npm|git|python|bash|curl|wget|mkdir|rm|cp|mv|ls|cat|grep|find|chmod|sudo|brew|docker)\s").unwrap(),
-            Regex::new(r"^\s*```").unwrap(),
-            Regex::new(r"^\s*(import|from|def|class|function|const|let|var|return)\s").unwrap(),
-            Regex::new(r"^\s*[A-Z_]{2,}=").unwrap(),
-            Regex::new(r"^\s*\|").unwrap(),
-            Regex::new(r"^\s*[-]{2,}").unwrap(),
-            Regex::new(r"^\s*[{}\[\]]\s*$").unwrap(),
-            Regex::new(r"^\s*(if|for|while|try|except|elif|else:)\b").unwrap(),
-            Regex::new(r"^\s*\w+\.\w+\(").unwrap(),
-            Regex::new(r"^\s*\w+ = \w+\.\w+").unwrap(),
-        ]
-    }
-
+    #[inline]
     fn build_word_set(words: &[&str]) -> HashMap<String, bool> {
         words.iter().map(|w| (w.to_string(), true)).collect()
     }
@@ -341,11 +367,13 @@ impl GeneralExtractor {
         scores
     }
 
+    #[inline]
     fn count_matches(&self, text: &str, patterns: &[Regex]) -> usize {
         patterns.iter().map(|p| p.find_iter(text).count()).sum()
     }
 
     /// Get sentiment of text
+    #[inline]
     fn get_sentiment(&self, text: &str) -> &'static str {
         let words: HashSet<_> = text.split_whitespace().map(|w| w.to_lowercase()).collect();
 
@@ -368,26 +396,16 @@ impl GeneralExtractor {
     }
 
     /// Check if text describes a resolved problem
+    #[inline]
     fn has_resolution(&self, text: &str) -> bool {
         let text_lower = text.to_lowercase();
-        let patterns = [
-            r"\bfixed\b",
-            r"\bsolved\b",
-            r"\bresolved\b",
-            r"\bpatched\b",
-            r"\bgot it working\b",
-            r"\bit works\b",
-            r"\bnailed it\b",
-            r"\bfigured (it )?out\b",
-            r"\bthe (fix|answer|solution)\b",
-        ];
-
-        patterns
+        RESOLUTION_PATTERNS
             .iter()
-            .any(|p| Regex::new(p).unwrap().is_match(&text_lower))
+            .any(|pattern| pattern.is_match(&text_lower))
     }
 
     /// Disambiguate memory type using sentiment and resolution
+    #[inline]
     fn disambiguate(
         &self,
         memory_type: &MemoryType,
@@ -426,7 +444,7 @@ impl GeneralExtractor {
             return false;
         }
 
-        for pattern in &self.code_line_patterns {
+        for pattern in CODE_LINE_PATTERNS.iter() {
             if pattern.is_match(stripped) {
                 return true;
             }
@@ -443,6 +461,7 @@ impl GeneralExtractor {
     }
 
     /// Extract prose lines (skip code)
+    #[inline]
     fn extract_prose(&self, text: &str) -> String {
         let lines = text.split('\n');
         let mut prose = Vec::new();
@@ -473,24 +492,19 @@ impl GeneralExtractor {
     fn split_into_segments(&self, text: &str) -> Vec<String> {
         let lines: Vec<_> = text.split('\n').collect();
 
-        // Check for speaker-turn markers
-        let turn_patterns = [
-            Regex::new(r"^>\s").unwrap(),
-            Regex::new(r"^(Human|User|Q)\s*:").unwrap(),
-            Regex::new(r"^(Assistant|AI|A|Claude|ChatGPT)\s*:").unwrap(),
-        ];
-
         let turn_count = lines
             .iter()
             .filter(|line| {
                 let stripped = line.trim();
-                turn_patterns.iter().any(|p| p.is_match(stripped))
+                TURN_PATTERNS
+                    .iter()
+                    .any(|pattern| pattern.is_match(stripped))
             })
             .count();
 
         // If enough turn markers, split by turns
         if turn_count >= 3 {
-            return self.split_by_turns(&lines, &turn_patterns);
+            return self.split_by_turns(&lines, &TURN_PATTERNS);
         }
 
         // Fallback: paragraph splitting
@@ -543,6 +557,7 @@ impl GeneralExtractor {
 }
 
 impl Default for GeneralExtractor {
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -560,6 +575,7 @@ pub enum MemoryType {
 
 impl MemoryType {
     /// Get display name
+    #[inline]
     pub fn as_str(&self) -> &'static str {
         match self {
             MemoryType::Decision => "decision",
@@ -581,6 +597,7 @@ pub struct MemoryChunk {
 
 impl MemoryChunk {
     /// Get memory type as string
+    #[inline]
     pub fn memory_type_str(&self) -> &'static str {
         self.memory_type.as_str()
     }

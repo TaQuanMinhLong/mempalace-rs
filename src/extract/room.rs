@@ -112,6 +112,7 @@ pub struct RoomDetector {
 
 impl RoomDetector {
     /// Create a new room detector
+    #[inline]
     pub fn new() -> Self {
         Self {
             room_keywords: HashMap::new(),
@@ -120,6 +121,7 @@ impl RoomDetector {
     }
 
     /// Detect room from file path and content keywords
+    #[inline]
     pub fn detect_room(&self, file_path: &str, content: &str) -> Option<String> {
         // First try to detect from folder structure
         if let Some(room) = self.detect_from_path(file_path) {
@@ -158,6 +160,7 @@ impl RoomDetector {
     }
 
     /// Get room from folder name using built-in mapping
+    #[inline]
     fn get_room_from_folder(folder: &str) -> Option<String> {
         for (key, room) in FOLDER_ROOM_MAP {
             if folder.contains(key) {
@@ -195,11 +198,13 @@ impl RoomDetector {
     }
 
     /// Register a room with keywords
+    #[inline]
     pub fn register_room(&mut self, room: Room) {
         self.room_keywords.insert(room.name.clone(), room.keywords);
     }
 
     /// Register a folder-to-room mapping
+    #[inline]
     pub fn register_folder_mapping(&mut self, folder: &str, room: &str) {
         self.custom_folder_map
             .insert(folder.to_lowercase(), room.to_string());
@@ -348,6 +353,7 @@ impl RoomDetector {
 }
 
 impl Default for RoomDetector {
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -363,6 +369,7 @@ pub struct DetectedRoom {
 
 impl DetectedRoom {
     /// Convert to a Room object
+    #[inline]
     pub fn to_room(&self, wing: &str) -> Room {
         Room::new(&self.name, wing, self.keywords.clone())
     }

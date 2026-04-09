@@ -1,3 +1,5 @@
 target/
 mempalace-python/
+
 .agents/plans/
+.tmp/

@@ -16,6 +16,15 @@ build-dev:
 test:
     cargo test
 
+# Run Criterion benchmarks
+bench-criterion:
+    cargo bench
+
+bench-cmd:
+    cargo run -r --features bench -- benchmark
+
+bench: bench-criterion bench-cmd
+
 # Run tests with output
 test-verbose:
     cargo test -- --nocapture
