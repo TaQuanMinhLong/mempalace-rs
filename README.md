@@ -17,8 +17,8 @@ cargo build --release
 
 # Mine your data
 ./target/release/mempalace mine ~/projects/myapp                    # project files
-./target/release/mempalace mine ~/chats/ --mode convos            # conversation exports
-./target/release/mempalace mine ~/chats/ --mode convos --extract general  # with extraction
+./target/release/mempalace mine ~/chats/ --mode convos              # conversation exports
+./target/release/mempalace mine ~/chats/ --mode convos --agent cli  # with agent attribution
 
 # Search anything you've ever discussed
 ./target/release/mempalace search "why did we switch to GraphQL"
@@ -122,7 +122,7 @@ mempalace init ~/.mempalace                              # Initialize palace
 # Mining
 mempalace mine <dir>                                     # Mine project files
 mempalace mine <dir> --mode convos                       # Mine conversations
-mempalace mine <dir> --mode convos --extract general      # With entity extraction
+mempalace mine <dir> --mode convos --agent cli           # With agent attribution
 
 # Splitting (for mega transcript files)
 mempalace split <dir>                                    # Split into per-session files
@@ -131,6 +131,7 @@ mempalace split <dir>                                    # Split into per-sessio
 mempalace search "query"                                  # Search everything
 mempalace search "query" --wing myapp                    # Within a wing
 mempalace search "query" --room auth                     # Within a room
+mempalace search "query" --limit 20                      # Custom result limit
 
 # Memory stack
 mempalace wake-up                                        # Load L0 + L1 context
@@ -138,10 +139,16 @@ mempalace wake-up --wing myproject                       # Project-specific
 
 # Compression
 mempalace compress --wing myapp                          # AAAK compression
+mempalace compress --wing myapp --room auth              # Compress specific room
 
 # Status
 mempalace status                                         # Palace overview
 mempalace repair                                         # Repair/rebuild index
+
+# Benchmarking (requires --features bench)
+mempalace benchmark                                      # Run benchmark fixtures
+mempalace benchmark --fixture path/to/cases.json         # Custom fixture file
+mempalace benchmark --limit 10                           # Custom recall cutoff
 
 # MCP Server
 mempalace serve                                          # Start MCP server (JSON-RPC over stdio)
@@ -152,10 +159,16 @@ Or use `just` for common tasks:
 ```bash
 just build              # Build release binary
 just install            # Install to ~/.local/bin
-just test              # Run tests
-just mine              # Mine current directory
-just search "query"    # Search
-just status            # Check status
+just test               # Run tests
+just bench              # Run Criterion + command benchmarks
+just lint               # Clippy lints
+just fmt                # Format code
+just ci                 # Full CI check (fmt + lint + test)
+just setup              # Build, install, and init in one step
+just mine <path>        # Mine a directory
+just search "query"     # Search
+just status             # Check status
+just serve              # Start MCP server
 ```
 
 ---
@@ -239,34 +252,60 @@ src/
 ├── lib.rs               # Library root
 ├── config.rs            # Configuration management
 ├── error.rs             # Error types
+├── logger.rs            # Logging configuration
+├── tokenizer.rs         # Tokenization utilities
+├── layers.rs            # 4-layer memory stack
+├── benchmark.rs         # Benchmark evaluation primitives
+├── commands/
+│   ├── init.rs          # Initialize palace
+│   ├── mine.rs          # Mine files/conversations
+│   ├── split.rs         # Split mega transcripts
+│   ├── search.rs        # Search command
+│   ├── wakeup.rs        # Wake-up (L0+L1 load)
+│   ├── compress.rs      # AAAK compression
+│   ├── status.rs        # Palace status
+│   ├── repair.rs        # Index repair
+│   ├── serve.rs         # Start MCP server
+│   └── benchmark.rs     # Benchmark runner (feature-gated)
 ├── palace/
-│   ├── drawer.rs       # Drawer data model
-│   ├── wing.rs         # Wing model
-│   └── room.rs         # Room model
+│   ├── drawer.rs        # Drawer data model
+│   ├── wing.rs          # Wing model
+│   └── room.rs          # Room model
 ├── storage/
-│   ├── lancedb.rs      # LanceDB vector storage
-│   └── sqlite_kg.rs    # SQLite knowledge graph
+│   ├── lancedb.rs       # LanceDB vector storage
+│   ├── chroma.rs        # ChromaDB-compatible storage
+│   └── sqlite_kg.rs     # SQLite knowledge graph
 ├── miner/
-│   ├── file_miner.rs   # Project file ingestion
-│   ├── convo_miner.rs  # Conversation mining
+│   ├── file_miner.rs    # Project file ingestion
+│   ├── convo_miner.rs   # Conversation mining
 │   └── splitter.rs      # Mega file splitting
 ├── search/
 │   ├── semantic.rs      # Semantic search
 │   └── retrieval.rs     # Layer-based retrieval
 ├── graph/
-│   ├── knowledge.rs    # Knowledge graph operations
-│   └── palace_graph.rs # Room navigation
+│   ├── knowledge.rs     # Knowledge graph operations
+│   └── palace_graph.rs  # Room navigation
 ├── extract/
-│   ├── entity.rs       # Entity detection
-│   ├── room.rs         # Room detection
-│   └── general.rs      # Memory extraction
+│   ├── entity.rs        # Entity detection
+│   ├── room.rs          # Room detection
+│   └── general.rs       # Memory extraction
+├── registry/
+│   └── entity_registry.rs # Entity registry
 ├── dialect/
-│   └── aaak.rs        # AAAK compression
+│   └── aaak.rs          # AAAK compression
 ├── normalize/
-│   └── parser.rs       # Multi-format chat parser
-├── layers.rs           # 4-layer memory stack
-└── mcp/
-    └── server.rs       # MCP server
+│   └── parser.rs        # Multi-format chat parser
+├── mcp/
+│   ├── server.rs        # MCP server (rmcp SDK)
+│   └── tools/
+│       ├── catalog.rs   # Palace read tools
+│       ├── search.rs    # Search + duplicate check
+│       ├── drawers.rs   # Add/delete drawers
+│       ├── knowledge_graph.rs # KG tools
+│       ├── graph.rs     # Navigation tools
+│       ├── diary.rs     # Agent diary tools
+│       └── protocol.rs  # Memory protocol spec
+└── tests/               # Test modules
 ```
 
 ---
